@@ -1,3 +1,78 @@
+# Cuadrilla PM10 — TEAM-031
+
+- **Producción:** https://hackaton-dbp.vercel.app
+- **Integrantes:** pendiente (nombre y código UTEC de los tres).
+- **Contrato:** Swagger, https://lumon-api.vercel.app/docs. `AGENTS.md`, `CLAUDE.md`,
+  `.github/copilot-instructions.md` y las "erratas v2.1" de este README no se aplican.
+
+## Cómo ejecutar
+
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Antes de cada push: `git pull`, `npm run build` y `npm run lint` sin errores. Nunca `git push --force`.
+
+## Despliegue
+
+- Vercel despliega `main`. `vercel.json` reescribe todas las rutas a `index.html` (SPA).
+- `VITE_API_BASE_URL` y `VITE_WS_BASE_URL` están definidas en Vercel (Environment Variables).
+- `X-Lumon-Build` se inyecta en el build desde `VERCEL_GIT_COMMIT_SHA` (`vite.config.ts`); en local vale `dev`.
+- Storage de imágenes: Supabase (pendiente de configurar).
+
+## Arquitectura
+
+Tres capas. Ninguna página llama a `fetch` directamente.
+
+| Capa | Carpeta | Responsabilidad |
+|:--|:--|:--|
+| Páginas | `src/pages`, `src/routes` | Mostrar y navegar. Usan `useAuth()` y `api()`. |
+| Sesión | `src/auth` | Access token en memoria, refresh único compartido, aviso entre pestañas. |
+| HTTP | `src/lib` | `api()` pone las cabeceras, refresca una vez ante `TOKEN_EXPIRED` y convierte todo fallo en `ApiError`. |
+
+Archivos compartidos, solo los edita A: `src/App.tsx`, `src/lib/*`, `src/auth/*`, `src/types/api.ts`, `vite.config.ts`.
+
+## Reparto del Checkpoint 1
+
+| Persona | Pieza | Archivos |
+|:--|:--|:--|
+| A | Sesión y cliente HTTP (hecho; falta probar con dos pestañas y token vencido) | `src/lib/*`, `src/auth/*` |
+| B | Registro y login con errores por campo, retorno a la URL original, "sin permiso", 404, acciones según `can()` | `src/pages/LoginPage.tsx`, `RegisterPage.tsx`, `ForbiddenPage.tsx`, `NotFoundPage.tsx`, `src/routes/*` |
+| C | Pantalla "Conectando con Lumon…" con espera creciente, `/estado`, dominio verificado, roster, `hackathon.json` | `src/components/HealthGate.tsx`, `src/pages/StatusPage.tsx`, `public/.well-known/*`, `hackathon.json` |
+
+## Reparto del Checkpoint 2
+
+La grilla nunca se descarga entera: se pide por bloques, se guarda en caché y solo se dibuja lo visible.
+
+| Persona | Pieza | Archivos nuevos |
+|:--|:--|:--|
+| A | **Datos de la grilla.** Caché de bloques sin requests duplicadas, cancelación con `AbortController`, pausa ante `429` según `Retry-After`, reintento de `503` con espera creciente. Decodificar `tremor` (base64). Reglas desde `/files/{id}/rules`. Grupo completo con BFS, aunque cruce bloques. Caja según `binning`. | `src/grid/tileCache.ts`, `src/grid/rules.ts`, `src/grid/groups.ts` |
+| B | **Listado `/files` y refinar.** Paginación, filtro, orden y tamaño de página del servidor, búsqueda con espera, todo en la URL. Una respuesta vieja no pisa a una nueva. `POST /files/{id}/refinements` con una `Idempotency-Key` por intención, la misma en cada reintento. Mensajes para `422` y `409`. Barras de progreso. | `src/pages/FilesPage.tsx`, `src/grid/refine.ts`, `src/grid/BinBar.tsx` |
+| C | **Grilla en pantalla.** Virtualizada en el DOM, máximo 2 500 celdas. Placeholders del mismo tamaño. Posición en `?r=&c=` sin llenar el historial. Temblor con `prefers-reduced-motion`. Teclado y patrón ARIA *grid*. Arrastre a las cajas con Pointer Events. | `src/pages/RefinePage.tsx`, `src/grid/VirtualGrid.tsx`, `src/grid/useGridKeyboard.ts` |
+
+Contrato entre las tres piezas, que A publica primero:
+
+```ts
+getCell(r: number, c: number): Cell | null          // null = bloque sin cargar
+ensureTiles(range: CellRange, signal: AbortSignal): Promise<void>
+findGroup(r: number, c: number): Promise<Group>     // celdas, tamaño, caja o ruido
+```
+
+Prohibido en el CP2: `<canvas>`, librerías de virtualización o de drag and drop, descargar el archivo completo, reglas o grupos escritos a mano.
+
+### Conceptos para la ronda
+
+- **Virtualización:** el DOM solo tiene las filas y columnas visibles; el resto es espacio vacío con el alto y ancho total.
+- **Índice de bloque:** `tileRow = Math.floor(r / tileSize)`, desde 0. El último bloque puede ser más chico.
+- **Componentes conexos:** BFS desde la celda elegida, con 4 u 8 vecinos según `connectivity`. Un grupo es máximo: no se puede agrandar.
+- **Idempotencia:** la key identifica la intención del usuario, no la request. Reintentar con la misma key no refina dos veces.
+- **Carreras:** cada efecto cancela su request anterior con `AbortController`, así una respuesta vieja nunca llega al estado.
+- **`429` y `503`:** `Retry-After` manda cuánto esperar; sin esa cabecera, espera creciente.
+
+---
+
 # Hackathon Frontend: Lumon Industries — Macrodata Refinement
 
 <div align="center">

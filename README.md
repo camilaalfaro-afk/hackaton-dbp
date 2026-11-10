@@ -52,13 +52,31 @@ La grilla nunca se descarga entera: se pide por bloques, se guarda en caché y s
 | B | **Listado `/files` y refinar.** Paginación, filtro, orden y tamaño de página del servidor, búsqueda con espera, todo en la URL. Una respuesta vieja no pisa a una nueva. `POST /files/{id}/refinements` con una `Idempotency-Key` por intención, la misma en cada reintento. Mensajes para `422` y `409`. Barras de progreso. | `src/pages/FilesPage.tsx`, `src/grid/refine.ts`, `src/grid/BinBar.tsx` |
 | C | **Grilla en pantalla.** Virtualizada en el DOM, máximo 2 500 celdas. Placeholders del mismo tamaño. Posición en `?r=&c=` sin llenar el historial. Temblor con `prefers-reduced-motion`. Teclado y patrón ARIA *grid*. Arrastre a las cajas con Pointer Events. | `src/pages/RefinePage.tsx`, `src/grid/VirtualGrid.tsx`, `src/grid/useGridKeyboard.ts` |
 
-Contrato entre las tres piezas, que A publica primero:
+Contrato entre las tres piezas, ya publicado por A en `src/grid`:
 
 ```ts
-getCell(r: number, c: number): Cell | null          // null = bloque sin cargar
-ensureTiles(range: CellRange, signal: AbortSignal): Promise<void>
-findGroup(r: number, c: number): Promise<Group>     // celdas, tamaño, caja o ruido
+import { createTileStore } from '../grid/tileCache'
+import { findGroup } from '../grid/groups'
+
+// Uno por archivo abierto. file = GET /files/{id}; rules = GET /files/{id}/rules.
+const store = createTileStore({ fileId: file.id, rows: file.rows, cols: file.cols, tileSize: file.tileSize })
+
+store.setViewport({ rowStart, rowEnd, colStart, colEnd }) // en cada scroll: pide lo visible, cancela lo que salió
+store.getCell(r, c)                 // { r, c, value, tremor, bin } o null si el bloque no cargó
+store.tileState(tileRow, tileCol)   // 'idle' | 'loading' | 'loaded' | 'error' (para el placeholder)
+store.pauseRemaining()              // ms que faltan de la pausa por 429
+store.subscribe(fn); store.getVersion()   // para useSyncExternalStore
+store.dispose()                     // al salir de la grilla
+
+const group = await findGroup(store, rules, r, c, signal)
+// null si la celda no da miedo. Si no: { cells, size, bin, noise, refinedAs }
+
+store.markRefined(group.cells, bin)        // tras un 201: marca sin volver a pedir la grilla
+store.reloadTiles(error.details.tiles)     // tras un 409 ALREADY_REFINED
 ```
+
+El límite del servidor es de 40 bloques cada 10 segundos por sesión. Tras un `429`, la caché no pide
+ningún bloque hasta que pase `Retry-After`.
 
 Prohibido en el CP2: `<canvas>`, librerías de virtualización o de drag and drop, descargar el archivo completo, reglas o grupos escritos a mano.
 

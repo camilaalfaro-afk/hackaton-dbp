@@ -62,6 +62,75 @@ export interface Me extends User {
   clearance: ClearanceStatus
 }
 
+export type BinCode = 'WO' | 'FC' | 'DR' | 'MA'
+
+/** Refined fraction (0 to 1) per bin and overall. */
+export interface Progress {
+  WO: number
+  FC: number
+  DR: number
+  MA: number
+  overall: number
+}
+
+export type FileStatus = 'ACTIVE' | 'COMPLETE'
+
+export interface DataFile {
+  id: number
+  name: string
+  rows: number
+  cols: number
+  /** Side of a tile in cells. Border tiles can be smaller. */
+  tileSize: number
+  status: FileStatus
+  progress: Progress
+  refinedGroups: number
+  totalGroups: number
+  mistakes: number
+  updatedAt: string
+}
+
+/** Change per file and per workspace: always read from GET /files/{id}/rules. */
+export interface Rules {
+  tremorThreshold: number
+  connectivity: 4 | 8
+  minGroupSize: number
+  maxGroupSize: number
+  binning: {
+    strategy: 'DIGIT_SUM_MOD' | 'MAX_DIGIT_MOD'
+    order: BinCode[]
+  }
+}
+
+export interface Tile {
+  tileRow: number
+  tileCol: number
+  originRow: number
+  originCol: number
+  rows: number
+  cols: number
+  /** One digit per cell, row by row. */
+  values: string
+  /** Base64 of one byte per cell (0 to 100), same order. */
+  tremor: string
+  /** One char per cell: "." unrefined, or W, F, D, M. */
+  bins: string
+  version: number
+}
+
+export interface RefineResult {
+  refinementId: number
+  bin: BinCode
+  size: number
+  file: {
+    progress: Progress
+    refinedGroups: number
+    totalGroups: number
+    mistakes: number
+    status: FileStatus
+  }
+}
+
 export interface Health {
   status: 'ok'
   service: string

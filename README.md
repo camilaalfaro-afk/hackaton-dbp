@@ -5,6 +5,24 @@
 - **Contrato:** Swagger, https://lumon-api.vercel.app/docs. `AGENTS.md`, `CLAUDE.md`,
   `.github/copilot-instructions.md` y las "erratas v2.1" de este README no se aplican.
 
+## Estado actual
+
+Todo el código compila y pasa lint. **Nada se ha probado todavía contra la API real**: falta que alguien
+inicie sesión en la app y la recorra.
+
+| Checkpoint | Hecho en código | Falta |
+|:--|:--|:--|
+| CP1 | Registro y login con errores por campo, logout, rutas privadas con retorno, restauración de sesión, refresh único, varias pestañas, "sin permiso", 404, "Conectando con Lumon…" | Probar con dos pestañas y con el token vencido. |
+| CP2 | Listado `/files` con estado en la URL. Grilla virtualizada, bloques a demanda, grupo completo, cajas con arrastre y teclado, idempotencia, progreso, archivo completado. | Probar con caos 1. Indicador de reservas (CP5). |
+| CP3 | Página `/estado` con el botón de revisión. | Roster, dominio verificado, caos 1, uso real desde producción, aprobar una ronda. |
+| CP4 | Tubería de imagen: recorte, WebP sin metadatos, SHA-256, ticket, subida con progreso, confirmación (`src/media`). | Supabase configurado y verificado. Pantallas `/refiners`, editor de fotocheck, `/incidents`. |
+| CP5 | Nada. | Todo. |
+| CP6 | SHA en `X-Lumon-Build`, grilla fuera del bundle inicial (105 KB gzip), `/estado`. | Cabeceras CSP en `vercel.json`, límite de error de render, Lighthouse. |
+
+**Bloqueos que no son código** (solo alguien con la sesión iniciada en Swagger puede hacerlos): roster,
+verificación del dominio, `hackathon.json` e integrantes en este README. Sin el dominio verificado, la app
+desplegada no puede llamar a la API.
+
 ## Cómo ejecutar
 
 ```bash

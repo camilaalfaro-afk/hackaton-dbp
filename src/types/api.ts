@@ -164,6 +164,25 @@ export interface ClearanceCheckResult extends ClearanceStatus {
   checks: Check[]
 }
 
+export type MediaPurpose = 'BADGE' | 'INCIDENT'
+
+export interface MediaTicket {
+  ticketId: string
+  expiresAt: string
+  provider: 'SUPABASE' | 'CLOUDINARY'
+  /** Supabase only: exact path inside the bucket. */
+  objectPath?: string
+  bucket?: string
+}
+
+export interface Media {
+  mediaId: number
+  url: string
+  width: number
+  height: number
+  purpose: MediaPurpose
+}
+
 export interface Health {
   status: 'ok'
   service: string

@@ -131,6 +131,58 @@ export interface RefineResult {
   }
 }
 
+export interface FilePage {
+  content: DataFile[]
+  totalElements: number
+  totalPages: number
+  page: number
+  size: number
+}
+
+export interface Check {
+  name: string
+  passed: boolean
+  detail: string
+}
+
+export interface IntegrationStatus {
+  deploy: {
+    origin: string | null
+    verifiedAt: string | null
+    lastBuildSeen: string | null
+    lastBuildSeenAt: string | null
+  }
+  storage: {
+    provider: string | null
+    verifiedAt: string | null
+    checks: Check[]
+  }
+  clearance: ClearanceStatus
+}
+
+export interface ClearanceCheckResult extends ClearanceStatus {
+  checks: Check[]
+}
+
+export type MediaPurpose = 'BADGE' | 'INCIDENT'
+
+export interface MediaTicket {
+  ticketId: string
+  expiresAt: string
+  provider: 'SUPABASE' | 'CLOUDINARY'
+  /** Supabase only: exact path inside the bucket. */
+  objectPath?: string
+  bucket?: string
+}
+
+export interface Media {
+  mediaId: number
+  url: string
+  width: number
+  height: number
+  purpose: MediaPurpose
+}
+
 export interface Health {
   status: 'ok'
   service: string

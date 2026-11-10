@@ -1,3 +1,5 @@
+import { cp4Routes } from './routes/cp4Routes'
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
 import { HealthGate } from './components/HealthGate'
@@ -9,6 +11,9 @@ import { StatusPage } from './pages/StatusPage'
 import { RequireAuth } from './routes/RequireAuth'
 import { RequirePermission } from './routes/RequirePermission'
 
+// The grid is loaded on demand so it stays out of the initial bundle.
+const RefinePage = lazy(() => import('./pages/RefinePage'))
+
 // Shared file: every route is declared here once. Add a route, never rewrite the table.
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -16,12 +21,23 @@ const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
+      ...cp4Routes,
       { path: '/', element: <Navigate to="/files" replace /> },
       {
         path: '/files',
         element: (
           <RequirePermission permission="files:read">
             <FilesPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/files/:id/refine',
+        element: (
+          <RequirePermission permission="files:read">
+            <Suspense fallback={<p className="px-4 py-8">Cargando la grilla…</p>}>
+              <RefinePage />
+            </Suspense>
           </RequirePermission>
         ),
       },

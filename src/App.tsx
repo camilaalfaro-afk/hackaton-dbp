@@ -1,3 +1,4 @@
+import { cp4Routes } from './routes/cp4Routes'
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
+      ...cp4Routes,
       { path: '/', element: <Navigate to="/files" replace /> },
       {
         path: '/files',

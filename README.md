@@ -89,6 +89,77 @@ Prohibido en el CP2: `<canvas>`, librerías de virtualización o de drag and dro
 - **Carreras:** cada efecto cancela su request anterior con `AbortController`, así una respuesta vieja nunca llega al estado.
 - **`429` y `503`:** `Retry-After` manda cuánto esperar; sin esa cabecera, espera creciente.
 
+## Plan del Checkpoint 3 — Sala de Bienestar
+
+Vale 2 puntos y condiciona todo lo demás: sin una ronda aprobada al cierre, el CP3, el CP4 y el CP5 valen 0.
+
+Pasos, en orden. Los cuatro primeros no son código y solo los puede hacer alguien con la sesión iniciada en Swagger:
+
+1. **Roster.** `PUT /team/roster` con los tres integrantes. Sin roster completo el equipo no entra a los sorteos.
+2. **Dominio.** `POST /integrations/deploy/challenge` con `{ "origin": "https://hackaton-dbp.vercel.app" }`.
+   Pegar el `token`, y nada más, en `public/.well-known/lumon-verification.txt`. Push, esperar el despliegue
+   y llamar a `POST /integrations/deploy/verify`. El token dura 30 minutos.
+3. **Caos.** `PUT /workspace/chaos` con `{ "level": 1 }`. La comprobación `REFINE` lo exige.
+4. **Uso real desde producción**, en los 15 minutos previos a la revisión:
+
+   | Comprobación | Qué hay que hacer en la app desplegada |
+   |:--|:--|
+   | `DEPLOY` | Nada extra: dominio verificado y `X-Lumon-Build` con el SHA, que ya se inyecta. |
+   | `SESSION` | Dejar la sesión abierta más de lo que dura el access token, para que ocurra un refresh. Nunca abrir la app con un refresh token copiado a mano. |
+   | `GRID` | Recorrer la grilla hasta pedir al menos 30 bloques. |
+   | `REFINE` | Refinar al menos 3 grupos con caos activo. El reintento con la misma `Idempotency-Key` ocurre solo cuando el servidor responde `503`. |
+
+5. **Revisión.** Botón "Abrir el Piso de Pruebas" en `/estado`, que llama a `POST /clearance/check`. Desde
+   Swagger o `localhost` responde `403 CHECK_FROM_APP_REQUIRED`. Se puede repetir.
+6. **Ronda.** A las 0:40, 1:05, 1:30 y 1:50. Sale sorteado un integrante, sin laptop ni celular: 6 preguntas,
+   se aprueba con 5.
+
+| Persona | Pieza |
+|:--|:--|
+| A | Página `/estado`: build, API, integraciones, clearance y el botón de revisión (`src/pages/StatusPage.tsx`). |
+| B | Pasos 1 a 3 desde Swagger, y el uso real del paso 4. |
+| C | `hackathon.json`, integrantes en este README y Supabase (ver CP4). |
+
+Los tres estudian el temario: sesión y seguridad, React y rendimiento, HTTP y resiliencia, algoritmos y
+datos, tiempo real, imágenes y accesibilidad.
+
+## Plan del Checkpoint 4 — Expedientes
+
+Vale 3 puntos. Requiere el Piso de Pruebas abierto y el storage verificado. Una clave secreta en el
+repositorio o en el bundle deja el CP4 y el CP6 en 0.
+
+Ninguna imagen se sube sin permiso. El flujo es siempre el mismo:
+
+1. **Preparar en el navegador:** recortar, redimensionar y exportar a WebP con `canvas.toBlob`. Dibujar en
+   un canvas descarta los metadatos (EXIF, XMP). Calcular `bytes`, `width`, `height` y el SHA-256 con
+   `crypto.subtle.digest`.
+2. **Pedir el ticket:** `POST /media/tickets`. Devuelve `ticketId` y `objectPath`; dura 10 minutos.
+3. **Subir** ese archivo exacto a Supabase, en `objectPath`, con `XMLHttpRequest` para tener progreso real y poder cancelar.
+4. **Confirmar:** `POST /media/tickets/{id}/confirm` con la URL pública. Devuelve `mediaId`. Es idempotente.
+
+| `purpose` | Dimensiones | Peso máximo |
+|:--|:--|:--|
+| `BADGE` | exactamente 512 × 512 | 122 880 bytes |
+| `INCIDENT` | lado mayor entre 800 y 1600 | 307 200 bytes |
+
+| Persona | Pieza | Archivos |
+|:--|:--|:--|
+| A | **Tubería de imagen.** Recorte y escalado a WebP bajo el peso máximo, SHA-256, ticket, subida con progreso y cancelación, confirmación. | `src/media/processImage.ts`, `src/media/upload.ts` |
+| B | **Directorio.** `/refiners` paginado con filtro por departamento y búsqueda, todo en la URL. Textos del exterior siempre como texto, nunca como HTML. Imágenes diferidas y con tamaño fijo. `/incidents` y `/incidents/new` con 1 a 3 fotos en paralelo. | `src/pages/RefinersPage.tsx`, `IncidentsPage.tsx`, `IncidentNewPage.tsx` |
+| C | **Storage y editor de fotocheck.** Bucket `lumon-media` público para lectura, solo `image/webp`, hasta 300 KB, política RLS que deja a `anon` insertar solo en `TEAM-031/`. `PUT /integrations/storage` hasta que todas las comprobaciones pasen. Editor con recorte cuadrado, arrastre, zoom y teclado. | Supabase, `.env.example`, `src/pages/BadgeEditorPage.tsx` |
+
+Variables nuevas, en `.env.example` y en Vercel: `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`. Solo la
+clave publicable (`sb_publishable_…` o `anon`). El cliente de Supabase se carga con `import()` dinámico para
+que no entre en el bundle inicial.
+
+### Conceptos para la ronda
+
+- **Metadatos:** una foto del celular lleva EXIF con ubicación. Volver a dibujarla en un canvas genera una imagen nueva sin ellos.
+- **Hash:** el SHA-256 prueba que el archivo subido es exactamente el que se declaró en el ticket.
+- **RLS:** la base de datos decide fila por fila qué puede hacer el rol `anon`. La clave publicable es segura porque las políticas limitan lo que permite.
+- **Por qué el ticket:** el backend nunca recibe el archivo; autoriza una ruta exacta y después verifica lo que quedó ahí.
+- **XSS:** React escapa el texto por defecto. El riesgo aparece con `dangerouslySetInnerHTML`, que aquí no se usa.
+
 ---
 
 # Hackathon Frontend: Lumon Industries — Macrodata Refinement

@@ -131,6 +131,39 @@ export interface RefineResult {
   }
 }
 
+export interface FilePage {
+  content: DataFile[]
+  totalElements: number
+  totalPages: number
+  page: number
+  size: number
+}
+
+export interface Check {
+  name: string
+  passed: boolean
+  detail: string
+}
+
+export interface IntegrationStatus {
+  deploy: {
+    origin: string | null
+    verifiedAt: string | null
+    lastBuildSeen: string | null
+    lastBuildSeenAt: string | null
+  }
+  storage: {
+    provider: string | null
+    verifiedAt: string | null
+    checks: Check[]
+  }
+  clearance: ClearanceStatus
+}
+
+export interface ClearanceCheckResult extends ClearanceStatus {
+  checks: Check[]
+}
+
 export interface Health {
   status: 'ok'
   service: string

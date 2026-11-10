@@ -147,7 +147,6 @@ export function createTileStore(meta: GridMeta): TileStore {
   const maxTileCol = Math.ceil(meta.cols / meta.tileSize) - 1
 
   let version = 0
-  let disposed = false
   // After a 429 nobody requests tiles until this moment.
   let pausedUntil = 0
   let active = 0
@@ -295,7 +294,6 @@ export function createTileStore(meta: GridMeta): TileStore {
   }
 
   function setViewport(range: CellRange): void {
-    if (disposed) return
     const [firstRow, firstCol] = tileOf(Math.max(0, range.rowStart), Math.max(0, range.colStart))
     const [lastRow, lastCol] = tileOf(
       Math.min(meta.rows - 1, range.rowEnd),
@@ -372,10 +370,9 @@ export function createTileStore(meta: GridMeta): TileStore {
     },
     getVersion: () => version,
     dispose() {
-      disposed = true
+      // Cancels what is in flight. The cache stays valid if the grid mounts again.
       for (const entry of pending.values()) entry.controller.abort()
       pending.clear()
-      listeners.clear()
     },
   }
 }

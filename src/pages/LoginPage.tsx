@@ -3,17 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../lib/http'
-
-// TODO(B): per-field errors with fieldErrorsOf(), focus management and final styles.
-
-/** Only same-app paths are accepted as a return target. */
-function returnPath(state: unknown): string {
-  if (typeof state === 'object' && state !== null && 'from' in state) {
-    const { from } = state
-    if (typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')) return from
-  }
-  return '/files'
-}
+import { returnPath } from '../routes/returnPath'
 
 export function LoginPage() {
   const { status, notice, login } = useAuth()

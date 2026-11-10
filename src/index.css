@@ -12,3 +12,30 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+/* Scary cells shake; --amp grows with the tremor of the cell. */
+@keyframes cell-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(var(--amp, 1px), calc(var(--amp, 1px) * -1));
+  }
+  75% {
+    transform: translate(calc(var(--amp, 1px) * -1), var(--amp, 1px));
+  }
+}
+
+.cell-scary {
+  animation: cell-shake 0.28s linear infinite;
+}
+
+/* Without motion they are still told apart: dashed outline and underline. */
+@media (prefers-reduced-motion: reduce) {
+  .cell-scary {
+    animation: none;
+    text-decoration: underline;
+    outline: 1px dashed currentColor;
+    outline-offset: -3px;
+  }
+}
